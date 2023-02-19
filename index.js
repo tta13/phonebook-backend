@@ -1,7 +1,9 @@
+require('dotenv').config()
 const express = require('express')
 const morgan = require('morgan')
 const cors = require('cors')
 const app = express()
+const Person = require('./models/person')
 
 app.use(express.static('build'))
 app.use(cors())
@@ -38,20 +40,15 @@ let persons = [
     }
 ]
 
-const generateId = () => {
-  const maxId = persons.length > 0
-    ? Math.max(...persons.map(p => p.id))
-    : 0
-  return maxId + 1
-}
-
 app.get('/info', (req, res) => {
   const time = new Date()
   return res.send(`<p>Phonebook has info for ${persons.length} people</p><p>${time}</p>`)
 })
 
 app.get('/api/persons', (request, response) => {
-  response.json(persons)
+  Person.find({}).then(people => {
+    response.send(people)
+  })
 })
 
 app.post('/api/persons', (request, response) => {
@@ -68,15 +65,14 @@ app.post('/api/persons', (request, response) => {
     })
   }
 
-  const person = {
+  const person = new Person({
     name: body.name,
-    number: body.number || "",
-    id: generateId(),
-  }
+    number: body.number || ""
+  })
 
-  persons = persons.concat(person)
-
-  response.json(person)
+  person.save().then(savedPerson => {
+    response.json(savedPerson)
+  })
 })
 
 app.get('/api/persons/:id', (request, response) => {
