@@ -10,7 +10,7 @@ app.use(cors())
 app.use(express.json())
 
 morgan.token('post-data', (req) => {
-  if (req.method === 'POST')
+  if (req.method === 'POST' || req.method === 'PUT')
     return JSON.stringify(req.body)
   return ""
 })
@@ -18,8 +18,11 @@ morgan.token('post-data', (req) => {
 app.use(morgan(':method :url :status :res[content-length] - :response-time ms :post-data'))
 
 app.get('/info', (req, res) => {
-  const time = new Date()
-  return res.send(`<p>Phonebook has info for ${persons.length} people</p><p>${time}</p>`)
+  Person.find({})
+    .then(people => {
+      const time = new Date()
+      return res.send(`<p>Phonebook has info for ${people.length} people</p><p>${time}</p>`)
+    })
 })
 
 app.get('/api/persons', (request, response) => {
@@ -67,6 +70,21 @@ app.get('/api/persons/:id', (request, response, next) => {
     .catch(error => next(error))
 })
 
+app.put('/api/persons/:id', (request, response, next) => {
+  const body = request.body
+
+  const person = {
+    name: body.name,
+    number: body.number,
+  }
+
+  Person.findByIdAndUpdate(request.params.id, person, { new: true })
+    .then(updatedPerson => {
+      response.json(updatedPerson)
+    })
+    .catch(error => next(error))
+})
+
 app.delete('/api/persons/:id', (request, response, next) => {
   Person.findByIdAndRemove(request.params.id)
     .then(result => {
@@ -75,6 +93,12 @@ app.delete('/api/persons/:id', (request, response, next) => {
     .catch(error => next(error))
 })
 
+const unknownEndpoint = (request, response) => {
+  response.status(404).send({ error: 'unknown endpoint' })
+}
+
+// handler of requests with unknown endpoint
+app.use(unknownEndpoint)
 
 const errorHandler = (error, request, response, next) => {
   console.error(error.message)
